@@ -115,7 +115,7 @@ class ParticleFilter:
         self.current_odom_xy_theta = []
 
         # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
-        # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
+        # TODO(Ian): fill in the appropriate service call here.  The resultant map should be assigned be passed
         #       into the init method for OccupancyField
 
         # for now we have commented out the occupancy field initialization until you can successfully fetch the map
@@ -131,7 +131,7 @@ class ParticleFilter:
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        # TODO: assign the lastest pose into self.robot_pose as a geometry_msgs.Pose object
+        # TODO(Ian): assign the lastest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
         self.robot_pose = Pose()
 
@@ -156,12 +156,12 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
+        # TODO(Liani and Ian): modify particles using delta
         # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
-        # TODO: nothing unless you want to try this alternate likelihood model
+        # TODO(NOPE): nothing unless you want to try this alternate likelihood model
         pass
 
     def resample_particles(self):
@@ -172,11 +172,11 @@ class ParticleFilter:
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        # TODO: fill out the rest of the implementation
+        # TODO(Ian): fill out the rest of the implementation
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        # TODO: implement this
+        # TODO(Liani and Ian): implement this
         pass
 
     @staticmethod
@@ -221,7 +221,7 @@ class ParticleFilter:
             xy_theta = convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
         self.particle_cloud.append(Particle(0,0,0))
-        # TODO create particles
+        # TODO(Liani) create particles
 
         self.normalize_particles()
         self.update_robot_pose()
@@ -229,7 +229,7 @@ class ParticleFilter:
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         pass
-        # TODO: implement this
+        # TODO(Liani): implement this
 
     def publish_particles(self, msg):
         particles_conv = []
