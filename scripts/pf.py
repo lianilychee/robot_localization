@@ -94,6 +94,7 @@ class ParticleFilter:
 
         self.laser_max_distance = 2.0   # maximum penalty to assess in the likelihood field model
 
+        self.sigma = 0.1
         # TODO: define additional constants if needed
 
         # Setup pubs and subs
@@ -193,8 +194,13 @@ class ParticleFilter:
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        # TODO(Liani and Ian): implement this
-        pass
+        for p in self.particlecloud:
+            p.w = 0
+            for i in range(360):
+                n_o = p.nearest_obstacle(i, msg.ranges[i])
+                error = self.occupancy_field.get_closest_obstacle_distance(n_o.x, n_o.y)
+                p.w += exp(-error*error*(2*sigma**2))
+        self.normalize_particles()
 
     @staticmethod
     def weighted_values(values, probabilities, size):
