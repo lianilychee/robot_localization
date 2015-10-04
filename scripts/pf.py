@@ -114,12 +114,15 @@ class ParticleFilter:
 
         self.current_odom_xy_theta = []
 
-        # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
-        # TODO(Ian): fill in the appropriate service call here.  The resultant map should be assigned be passed
-        #       into the init method for OccupancyField
+        rospy.wait_for_service("static_map")
+        static_map = rospy.ServiceProxy("static_map", GetMap)
+        try:
+            map = static_map().map
+        except:
+            print("Could not receive map")
 
         # for now we have commented out the occupancy field initialization until you can successfully fetch the map
-        #self.occupancy_field = OccupancyField(map)
+        self.occupancy_field = OccupancyField(map)
         self.initialized = True
 
     def update_robot_pose(self):
@@ -130,10 +133,17 @@ class ParticleFilter:
         """
         # first make sure that the particle weights are normalized
         self.normalize_particles()
+        mean_x = 0
+        mean_y = 0
+        mean_theta = 0
 
-        # TODO(Ian): assign the lastest pose into self.robot_pose as a geometry_msgs.Pose object
-        # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
+        for p in self.particlecloud:
+            mean_x += p.x*p.w
+            mean_y += p.y*p.w
+            mean_x_vector += math.cos(p.theta)*p.w
+            mean_y_vector += math.sin(p.theta)*p.w
+        mean_theta = math.atan2(mean_y_vector, mean_x_vector)
+        self.robot_pose = Particle(x=mean_x,y=mean_y,theta=mean_theta).as_pose()
 
     def update_particles_with_odom(self, msg):
         """ Update the particles using the newly given odometry pose.
@@ -156,8 +166,10 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO(Liani and Ian): modify particles using delta
-        # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
+        for p in self.particlecloud:
+            p.x += delta.r*cos(delta.rot + p.theta)
+            p.y += delta.r*sin(delta.rot + p.theta)
+            p.theta += delta.theta
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -172,7 +184,12 @@ class ParticleFilter:
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        # TODO(Ian): fill out the rest of the implementation
+        indicies = [i for i in range(len(self.particlecloud))]
+        probs = [p.w for p in self.particlecloud]
+        new_indices = draw_random_sample(choices=indicies, probabilities=probs, n=self.n_particles)
+        new_particles = [self.particlecloud[i] for i in new_indices]
+        self.particlecloud = new_particles
+        self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
@@ -220,9 +237,6 @@ class ParticleFilter:
             xy_theta = convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
 
-        # self.particle_cloud.append(Particle(0,0,0))
-        # TODO(Liani) create particles
-
         for i in range(self.n_particles):
             self.particle_cloud.append(Particle(x=xy_theta[0]+gauss(0,0.25),y=xy_theta[1]+gauss(0,0.25),theta=xy_theta[2]+gauss(0,0.25)))        
         self.normalize_particles()
@@ -230,8 +244,6 @@ class ParticleFilter:
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # pass
-        # TODO(Liani): implement this
 
         z = 0.0
         for p in self.particle_cloud:
