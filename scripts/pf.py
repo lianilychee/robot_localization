@@ -48,11 +48,21 @@ class Particle(object):
         self.theta = theta
         self.x = x
         self.y = y
+        self.sigma = 1.0
 
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
         orientation_tuple = tf.transformations.quaternion_from_euler(0,0,self.theta)
         return Pose(position=Point(x=self.x,y=self.y,z=0), orientation=Quaternion(x=orientation_tuple[0], y=orientation_tuple[1], z=orientation_tuple[2], w=orientation_tuple[3]))
+
+    def nearest_obstacle(ang, dist):
+        """ project where the particle thinks the wall is and return the corresponding coordinates
+        pass in angle in degrees, distance in meters"""
+
+        projected_x = dist * cos(math.radians(ang))
+        projected_y = dist * sin(math.radians(ang))
+
+        return (projected_x, projected_y)
 
     # TODO: define additional helper functions if needed
 
@@ -194,7 +204,13 @@ class ParticleFilter:
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
         # TODO(Liani and Ian): implement this
-        pass
+        # pass
+
+        e**(-d*d*(2*(self.sigma**2)))
+
+        self.w = (something to do with scan)
+
+
 
     @staticmethod
     def weighted_values(values, probabilities, size):
