@@ -48,19 +48,18 @@ class Particle(object):
         self.theta = theta
         self.x = x
         self.y = y
-        self.sigma = 1.0
 
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
         orientation_tuple = tf.transformations.quaternion_from_euler(0,0,self.theta)
         return Pose(position=Point(x=self.x,y=self.y,z=0), orientation=Quaternion(x=orientation_tuple[0], y=orientation_tuple[1], z=orientation_tuple[2], w=orientation_tuple[3]))
 
-    def nearest_obstacle(ang, dist):
+    def nearest_obstacle(self, ang, dist):
         """ project where the particle thinks the wall is and return the corresponding coordinates
         pass in angle in degrees, distance in meters"""
 
-        projected_x = dist * cos(math.radians(ang))
-        projected_y = dist * sin(math.radians(ang))
+        projected_x = dist * math.cos(math.radians(ang))
+        projected_y = dist * math.sin(math.radians(ang))
 
         return (projected_x, projected_y)
 
@@ -147,8 +146,10 @@ class ParticleFilter:
         mean_x = 0
         mean_y = 0
         mean_theta = 0
+        mean_x_vector = 0
+        mean_y_vector = 0
 
-        for p in self.particlecloud:
+        for p in self.particle_cloud:
             mean_x += p.x*p.w
             mean_y += p.y*p.w
             mean_x_vector += math.cos(p.theta)*p.w
@@ -168,19 +169,21 @@ class ParticleFilter:
         # compute the change in x,y,theta since our last update
         if self.current_odom_xy_theta:
             old_odom_xy_theta = self.current_odom_xy_theta
-            delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
-                     new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
-                     new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
+            delta = {'x': new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
+                     'y': new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
+                     'theta': new_odom_xy_theta[2] - self.current_odom_xy_theta[2]}
+            delta['r'] = math.sqrt(delta['x']**2 + delta['y']**2)
+            delta['rot'] = math.atan2(delta['y'],delta['x'])
 
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        for p in self.particlecloud:
-            p.x += delta.r*cos(delta.rot + p.theta)
-            p.y += delta.r*sin(delta.rot + p.theta)
-            p.theta += delta.theta
+        for p in self.particle_cloud:
+            p.x += delta['r']*math.cos(delta['rot'] + p.theta)
+            p.y += delta['r']*math.sin(delta['rot'] + p.theta)
+            p.theta += delta['theta']
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -195,21 +198,21 @@ class ParticleFilter:
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        indicies = [i for i in range(len(self.particlecloud))]
-        probs = [p.w for p in self.particlecloud]
-        new_indices = draw_random_sample(choices=indicies, probabilities=probs, n=self.n_particles)
-        new_particles = [self.particlecloud[i] for i in new_indices]
-        self.particlecloud = new_particles
+        indices = [i for i in range(len(self.particle_cloud))]
+        probs = [p.w for p in self.particle_cloud]
+        new_indices = self.draw_random_sample(choices=indices, probabilities=probs, n=(self.n_particles))
+        new_particles = [self.particle_cloud[i] for i in new_indices]
+        self.particle_cloud = new_particles
         self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        for p in self.particlecloud:
+        for p in self.particle_cloud:
             p.w = 0
             for i in range(360):
                 n_o = p.nearest_obstacle(i, msg.ranges[i])
-                error = self.occupancy_field.get_closest_obstacle_distance(n_o.x, n_o.y)
-                p.w += exp(-error*error*(2*sigma**2))
+                error = self.occupancy_field.get_closest_obstacle_distance(n_o[0], n_o[1])
+                p.w += math.exp(-error*error*(2*self.sigma**2))
         self.normalize_particles()
 
     @staticmethod
@@ -260,12 +263,12 @@ class ParticleFilter:
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-
         z = 0.0
         for p in self.particle_cloud:
             z = z + p.w
-        for i in range(len(self.particle_cloud)):
-            self.particle_cloud[i].w = self.particle_cloud[i].w / z
+        if z > 0:
+            for i in range(len(self.particle_cloud)):
+                self.particle_cloud[i].w = self.particle_cloud[i].w / z
 
     def publish_particles(self, msg):
         particles_conv = []
@@ -306,7 +309,6 @@ class ParticleFilter:
         self.odom_pose = self.tf_listener.transformPose(self.odom_frame, p)
         # store the the odometry pose in a more convenient format (x,y,theta)
         new_odom_xy_theta = convert_pose_to_xy_and_theta(self.odom_pose.pose)
-
         if not(self.particle_cloud):
             # now that we have all of the necessary transforms we can update the particle cloud
             self.initialize_particle_cloud()
@@ -330,6 +332,7 @@ class ParticleFilter:
         """ This method constantly updates the offset of the map and 
             odometry coordinate systems based on the latest results from
             the localizer """
+        (translation, rotation) = convert_pose_inverse_transform(self.robot_pose)
         p = PoseStamped(pose=convert_translation_rotation_to_pose(translation,rotation),
                         header=Header(stamp=msg.header.stamp,frame_id=self.base_frame))
         self.odom_to_map = self.tf_listener.transformPose(self.odom_frame, p)
