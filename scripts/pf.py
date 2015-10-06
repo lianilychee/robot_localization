@@ -199,7 +199,7 @@ class ParticleFilter:
         # make sure the distribution is normalized
         self.normalize_particles()
         indices = [i for i in range(len(self.particle_cloud))]
-        probs = [p.w for p in self.particle_cloud]
+        probs = [p.w for p in self.particle_cloud if p.w != float('nan')]
         new_indices = self.draw_random_sample(choices=indices, probabilities=probs, n=(self.n_particles))
         new_particles = [self.particle_cloud[i] for i in new_indices]
         self.particle_cloud = new_particles
@@ -208,12 +208,15 @@ class ParticleFilter:
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
         for p in self.particle_cloud:
-            p.w = 0
+            weight = 0
             for i in range(360):
                 n_o = p.nearest_obstacle(i, msg.ranges[i])
                 error = self.occupancy_field.get_closest_obstacle_distance(n_o[0], n_o[1])
-                p.w += math.exp(-error*error*(2*self.sigma**2))
+                weight += math.exp(-error*error*(2*self.sigma**2))
+            p.w = weight
+        print([p.w for p in self.particle_cloud])
         self.normalize_particles()
+        print([p.w for p in self.particle_cloud])
 
     @staticmethod
     def weighted_values(values, probabilities, size):
@@ -269,6 +272,9 @@ class ParticleFilter:
         if z > 0:
             for i in range(len(self.particle_cloud)):
                 self.particle_cloud[i].w = self.particle_cloud[i].w / z
+        else:
+            for i in range(len(self.particle_cloud)):
+                self.particle_cloud[i].w = 1/len(self.particle_cloud)
 
     def publish_particles(self, msg):
         particles_conv = []
