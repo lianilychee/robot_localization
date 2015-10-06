@@ -199,7 +199,9 @@ class ParticleFilter:
         # make sure the distribution is normalized
         self.normalize_particles()
         indices = [i for i in range(len(self.particle_cloud))]
-        probs = [p.w for p in self.particle_cloud if p.w != float('nan')]
+        probs = [p.w for p in self.particle_cloud]
+        # print('b')
+        # print(probs)
         new_indices = self.draw_random_sample(choices=indices, probabilities=probs, n=(self.n_particles))
         new_particles = [self.particle_cloud[i] for i in new_indices]
         self.particle_cloud = new_particles
@@ -208,15 +210,14 @@ class ParticleFilter:
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
         for p in self.particle_cloud:
-            weight = 0
+            weight_sum = 0
             for i in range(360):
                 n_o = p.nearest_obstacle(i, msg.ranges[i])
                 error = self.occupancy_field.get_closest_obstacle_distance(n_o[0], n_o[1])
-                weight += math.exp(-error*error*(2*self.sigma**2))
-            p.w = weight
-        print([p.w for p in self.particle_cloud])
+                weight_sum += math.exp(-error*error/(2*self.sigma**2))
+            p.w = weight_sum / 360
+            # print(p.w)
         self.normalize_particles()
-        print([p.w for p in self.particle_cloud])
 
     @staticmethod
     def weighted_values(values, probabilities, size):
@@ -266,15 +267,16 @@ class ParticleFilter:
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        z = 0.0
-        for p in self.particle_cloud:
-            z = z + p.w
+        w = [deepcopy(p.w) for p in self.particle_cloud]
+        z = sum(w)
+        print(z)
         if z > 0:
             for i in range(len(self.particle_cloud)):
-                self.particle_cloud[i].w = self.particle_cloud[i].w / z
+                self.particle_cloud[i].w = w[i] / z
         else:
             for i in range(len(self.particle_cloud)):
                 self.particle_cloud[i].w = 1/len(self.particle_cloud)
+        print(sum([p.w for p in self.particle_cloud]))
 
     def publish_particles(self, msg):
         particles_conv = []
