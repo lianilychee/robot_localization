@@ -5,20 +5,24 @@ Liani Lye
 ---
 What was the goal of your project?
 
-We attempted to implement particle filtering, an alternative method to determining the robot's position.  We succeeded, though our robot does not localize itself as gracefully as it could (aka we could have tweaked certain constants for more refined behavior).
+We attempted to implement particle filtering, an alternative method to determining the robot's position.  We succeeded, though our particles do not converge as tightly as they ought to.
 
 ---
 How did you solve the problem? (Note: this doesn't have to be super-detailed, you should try to explain what you did at a high-level so that others in the class could reasonably understand what you did).
 
-In particle filtering, a particle cloud is deployed to the robot's approximate location.  Each particle has a certain probability of actually being in the robot's position.
+In particle filtering, a particle cloud is deployed to the robot's approximate location.  This particle cloud, consisting of particles weighted based on probability of actually being in the robot's position, is deployed in the general vicinity of the bot's location and moves according to the bot's movements.
 
 ---
 Describe a design decision you had to make when working on your project and what you ultimately did (and why)? These design decisions could be particular choices for how you implemented some part of an algorithm or perhaps a decision regarding which of two external packages to use in your project.
 
+Design decisions were born of challenges faced (see next question).  There was a lot of staring at whiteboards involved.
+
 ---
 What if any challenges did you face along the way?
 
-We determined that this was due to threading.  Because normalize_particles() is called in various locations of pf.py, the particle weights were constantly being written and overwritten.  We overcome this by doing a deep-copy of each list of particle weights and modifying /that/.
+Two challenges: crashing particle filter and wayward particles.  Crashing particle filter:  When we ran our particle filter, it would crash after a few seconds.  With each normalization, the particle weight values would fluctuate wildly and never sum up to 1.  Crashes occurred when the sum reached near-zero values (something on the order of 10^-28).  Enter threading.  Because normalize_particles() is called in various locations of pf.py, the particle weights were constantly being written and subsequently overwritten.  We overcame this by doing a deep-copy of each list of particle weights and modifying /that/.
+
+Wayward particles:  After the saga of the abnormal normalization, we thought we were set.  We were mistaken.  When navigating, particnles would follow the bot just fine - until the bot turned.  Then, the particles would point and go in the opposite direction and continue on their merry way.  It turns out subtracting the current and desired heading != subtracting the previous and desired heading.  After distinguishing that subtlety, the particles accurately followed the bot.
 
 ---
 What would you do to improve your project if you had more time?
