@@ -96,7 +96,7 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from 
 
-        self.n_particles = 300          # the number of particles to use
+        self.n_particles = 5          # the number of particles to use
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
@@ -180,9 +180,20 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
+        # for p in self.particle_cloud:
+        #     p.x += delta['r']*math.cos(delta['rot'] + p.theta)
+        #     p.y += delta['r']*math.sin(delta['rot'] + p.theta)
+        #     p.theta += delta['theta']
+
         for p in self.particle_cloud:
-            p.x += delta['r']*math.cos(delta['rot'] + p.theta)
-            p.y += delta['r']*math.sin(delta['rot'] + p.theta)
+            print 'p.x: {}'.format(str(p.x))
+            print 'p.y: {}'.format(str(p.y))
+            print 'p.theta: {}'.format(str(p.theta))
+            print 'delta[r]: {}'.format(str(delta['r']))
+            print 'delta[rot]: {}'.format(str(delta['rot']))
+            print 'delta[theta]: {}'.format(str(delta['theta']))
+            p.x += delta['r']*math.cos(angle_diff(delta['rot'] + p.theta))
+            p.y += delta['r']*math.sin(angle_diff(delta['rot'] + p.theta))
             p.theta += delta['theta']
 
     def map_calc_range(self,x,y,theta):
@@ -203,7 +214,11 @@ class ParticleFilter:
         # print('b')
         # print(probs)
         new_indices = self.draw_random_sample(choices=indices, probabilities=probs, n=(self.n_particles))
-        new_particles = [self.particle_cloud[i] for i in new_indices]
+        new_particles = []
+        for i in new_indices:
+            clean_index = int(i)
+            old_particle = self.particle_cloud[clean_index]
+            new_particles.append(Particle(x=old_particle.x+gauss(0,.05),y=old_particle.y+gauss(0,.05),theta=old_particle.theta+gauss(0,.05)))
         self.particle_cloud = new_particles
         self.normalize_particles()
 
