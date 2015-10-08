@@ -61,8 +61,8 @@ def angle_diff(a, b):
             angle_diff(.1, 2*math.pi - .1) -> .2
             angle_diff(.1, .2+2*math.pi) -> -.1
     """
-    a = ParticleFilter.angle_normalize(a)
-    b = ParticleFilter.angle_normalize(b)
+    a = angle_normalize(a)
+    b = angle_normalize(b)
     d1 = a-b
     d2 = 2*math.pi - math.fabs(d1)
     if d1 > 0:

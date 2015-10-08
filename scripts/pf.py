@@ -96,7 +96,7 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from 
 
-        self.n_particles = 5          # the number of particles to use
+        self.n_particles = 500          # the number of particles to use
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
@@ -173,27 +173,16 @@ class ParticleFilter:
                      'y': new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
                      'theta': new_odom_xy_theta[2] - self.current_odom_xy_theta[2]}
             delta['r'] = math.sqrt(delta['x']**2 + delta['y']**2)
-            delta['rot'] = math.atan2(delta['y'],delta['x'])
+            delta['rot'] = angle_diff(math.atan2(delta['y'],delta['x']), old_odom_xy_theta[2])
 
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # for p in self.particle_cloud:
-        #     p.x += delta['r']*math.cos(delta['rot'] + p.theta)
-        #     p.y += delta['r']*math.sin(delta['rot'] + p.theta)
-        #     p.theta += delta['theta']
-
         for p in self.particle_cloud:
-            print 'p.x: {}'.format(str(p.x))
-            print 'p.y: {}'.format(str(p.y))
-            print 'p.theta: {}'.format(str(p.theta))
-            print 'delta[r]: {}'.format(str(delta['r']))
-            print 'delta[rot]: {}'.format(str(delta['rot']))
-            print 'delta[theta]: {}'.format(str(delta['theta']))
-            p.x += delta['r']*math.cos(angle_diff(delta['rot'] + p.theta))
-            p.y += delta['r']*math.sin(angle_diff(delta['rot'] + p.theta))
+            p.x += delta['r']*math.cos(delta['rot'] + p.theta)
+            p.y += delta['r']*math.sin(delta['rot'] + p.theta)
             p.theta += delta['theta']
 
     def map_calc_range(self,x,y,theta):
